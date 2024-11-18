@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: wp_mysql_container
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pwd
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Monta o arquivo SQL para inicialização
+    networks:
+      - docker_network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: wp_phpmyadmin_container
+    depends_on:
+      - mysql
+    ports:
+      - "8080:80" # Mapeamento da porta para acessar o phpMyAdmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: user
+      PMA_PASSWORD: pwd
+    networks:
+      - docker_network
+    restart: unless-stopped
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wp_container
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - mysql
+    ports:
+      - "8000:80" # Porta para acessar o WordPress
+    environment:
+      WORDPRESS_DB_HOST: mysql:3306
+      WORDPRESS_DB_NAME: db_wordpress
+      WORDPRESS_DB_USER: user
+      WORDPRESS_DB_PASSWORD: pwd
+    volumes:
+      - ./wordpress_data:/var/www/html
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+      - ./apache.conf:/etc/apache2/conf-enabled/apache.conf
+    networks:
+      - docker_network
+    restart: unless-stopped
+
+networks:
+  docker_network:
+
+volumes:
+  mysql_data:
+    driver: local
+  wordpress_data:
+    driver: local
